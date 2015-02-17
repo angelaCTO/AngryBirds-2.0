@@ -1,0 +1,23 @@
+/* 
+* Instructions on how to set up the Beaglebone Black so it 
+* grabs the time from an attached RTC on startup and sets it as the system
+* time.
+*/
+
+- Change permissions using visudo to allow root access with NO PASSWORD
+- Create a bash file in /bin called “clock_init”
+- Copy this into the bash file:
+
+    #! /bin/bash
+    
+    sudo su
+    echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device
+    hwclock -s -f /dev/rtc1
+    hwclock -w
+
+- Use “crontab -e” in order to alter the crontab file
+- Append this code at the end of crontab:
+	
+    @reboot cd /path/to/directory/of/clock_init/ && sudo ./clock_init
+
+- Restart your BBB and type “date” in order to check the system’s date and time

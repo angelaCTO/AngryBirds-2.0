@@ -1,0 +1,13 @@
+.bash*
+.profile
+.sudo_as*
+*.o
+.cache/
+SDCard/*
+.nano*
+main
+test_main
+analogstream
+signals.txt
+bin/*
+Enclosure_Design/*
