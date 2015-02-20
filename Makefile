@@ -7,7 +7,7 @@ CLIENT_OBJS = Client/ClientSocket.o Socket/Socket.o
 SERIAL_OBJS = serial/serialib.o
 ADXL_OBJS = ADXL/ADXL345.o
 BBB_I2C_OBJS = ADXL/BBB_I2C.o
-OBJS= $(BLACK_OBJS) $(SENSOR_SIGNAL_OBJS) $(SERIAL_OBJS) $(ADXL_OBJS) $(BBB_I2C_OBJS)
+OBJS= $(BLACK_OBJS) $(SERIAL_OBJS) $(ADXL_OBJS) $(BBB_I2C_OBJS)
 
 all: $(OBJS) main 
 
@@ -25,7 +25,7 @@ Client/ClientSocket.o: Client/ClientSocket.cpp
 	$(MAKE) -C Client
 Socket/Socket.o: Socket/Socket.cpp
 	$(MAKE) -C Socket
-ADXL/ADXL345.o: ADXL/ADXL345.cpp
+ADXL/ADXL345: ADXL/ADXL345.cpp
 	$(MAKE) -C ADXL
 ADXL/BBB_I2C: ADXL/BBB_I2C.cpp
 	$(MAKE) -C ADXL
@@ -34,9 +34,7 @@ clean:
 	rm -rf *.o main
 	rm -rf bin/main 
 	$(MAKE) -C BlackLib clean
-	$(MAKE) -C SensorSignal clean
 	$(MAKE) -C Server clean
 	$(MAKE) -C Client clean
 	$(MAKE) -C Socket clean
-	$(MAKE) -C ADXL345 clean
-	$(MAKE) -C BBB_I2C clean
+	$(MAKE) -C ADXL clean
