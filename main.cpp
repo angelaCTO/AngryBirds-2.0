@@ -16,29 +16,31 @@
 #include "BlackLib/BlackLib.h"
 #include "Server/ServerSocket.h"
 #include "Socket/SocketException.h"
+#include "ADXL/ADXL345.h"
+#include "ADXL/BBB_I2C.h"
 
 using namespace cv;
 using namespace std;
+using namespace cacaosd_bbb_i2c;
+using namespace cacaosd_adxl345;
 
 /*-------------------------------------------------
              PREPROCESSOR CONSTANTS
   -------------------------------------------------*/
-#define PRETIME            200 // 10 sec bf collision
-#define POSTTIME           600 // 20 sec af collision
+#define PRETIME            64  //  64/16 = 4             sec before collision
+#define POSTTIME           128 // 128/16 - 4 = 8 - 4 = 4 sec after  collision
+#define SIG_PRETIME         40 // 1 sec before - if you want to change this, change ADXL_DELAY_US too
+#define SIG_POSTTIME        120 // 2 sec after - if you want to change this, change ADXL_DELAY_US too
 #define FPS                20
 #define X_RESOLUTION       352
 #define Y_RESOLUTION       288
 #define WINDOW_SIZE        0
-#define TEST_THRESHOLD     1000 // signal threshold  ... tbd from site tests
 #define COMPRESSION_LEVEL  60
 #define PORT_NUMBER        30000
-#define DEVICE_PORT        "/dev/tty02"
 #define BAUD_RATE          115200
 
-//Uncomment below to let us know video is storing
-#define DEBUG
-//Uncomment below to let us analyze the sensor analog stream
-#define ANALOG
+#define ADXL_DELAY_US       25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
+#define ADXL_THRESH         5
 
 /*-----------------------------------------------------
               FUNCTION PROTPOTYPES
@@ -48,31 +50,36 @@ string create_vid_id(string path, bool collision);
 string create_im_id(string path, int im_count, bool is_dated);
 string create_dir_path(string path, string sub_dir_name);
 string get_date();
-void* listenForExit(void* i);
-void flashLed(int numTimes);
-bool isSignalRecieved(BlackGPIO *ir_in);
+void* listenForExit(void* param);
+void* led_live(void* param);
+void* ADXL_sig(void* param);
+void flashLed(int numTimes, int sleep_period);
+void record_log(const char *message);
 
-bool stopSig = false;
+bool stopSig;
+bool isActivity;
+ofstream ab_log;
+string event_time_for_sig;
+
+// Set up the output pin for controlling the LED light
+BlackGPIO *ledOut;
 
 int main()
 {
-  /*---------------------------------------------------
-          VARIABLE DECLARATIONS / INITIALIZATION
-    ---------------------------------------------------*/
+    /*---------------------------------------------------
+            VARIABLE DECLARATIONS / INITIALIZATION
+      ---------------------------------------------------*/
     Mat     frame;
     queue   <Mat> frames;
     vector  <int> compress_params;
     struct  stat st;
-    string  vid_id;
     string  im_id;
     string  path_name;
     string  subdir_name;
     string  subdir_path;
-    int     adc             = 0;
     int     dir_count       = 0;
     int     im_count        = 0;
     int     rc;
-    int     frame_count;
     int     limit           = PRETIME;
     bool    save            = false;
     bool    detected        = false;
@@ -80,138 +87,155 @@ int main()
     const char* converted_path;
     const char* converted_subpath;
 
-    string img_path = "/home/ubuntu/AngryBirds/SDCard/images/";
-    string vid_path = "/home/ubuntu/AngryBirds/SDCard/videos/";
+    record_log("CREATING MAIN IMAGES AND VIDEOS DIRECTORY.");
+
+    string img_path = "/home/ubuntu/AngryBirds/SDCard/images";
+    path_name = create_dir_path(img_path, "NONE");
+    converted_path = path_name.c_str();
+    create_directory(converted_path, st);
+
+    record_log(converted_path);
+
+    string vid_path = "/home/ubuntu/AngryBirds/SDCard/videos";
+    path_name = create_dir_path(vid_path, "NONE");
+    converted_path = path_name.c_str();
+    create_directory(converted_path, st);
+
+    record_log(converted_path);
+
+    record_log("DONE CREATING MAIN IMAGES AND VIDEOS DIRECTORY: ");
+
     ofstream signals;
+    record_log("Program started.");
 
-    // Gets analog readings from adc pin 4
-    BlackADC *test_adc = new BlackADC(AIN4); 	       // P9_34/33
-    BlackGPIO *ir_in = new BlackGPIO(GPIO_68, input);  // P8_10
-
-// int tester = 0; for testing ...can delete
-  /*---------------------------------------------------
-         FRAME CAPTURE / STORAGE + COLLISION DETECTION
-    ---------------------------------------------------*/
+    /*---------------------------------------------------
+           FRAME CAPTURE / STORAGE + COLLISION DETECTION
+      ---------------------------------------------------*/
     // Start listening for signal to stop
     pthread_t exit_thread;
+    pthread_t led_thread;
+    pthread_t ADXL_thread;
+
+    stopSig = false;
     rc = pthread_create(&exit_thread, NULL, listenForExit, (void*) NULL);
-    if(rc){
-        cout << "ERROR: unable to create thread" << endl;
+    if(rc)
+    {
+        record_log("ERROR: unable to create exit thread.");
+    }
+
+    isActivity = false;
+    rc = pthread_create(&ADXL_thread, NULL, ADXL_sig, (void*) NULL);
+    if(rc)
+    {
+        record_log("ERROR: unable to create ADXL thread.");
+    }
+
+    ledOut = new BlackGPIO(GPIO_30, output);// GPIO_30 = pin9-11
+    rc = pthread_create(&led_thread, NULL, led_live, (void*) NULL);
+    if(rc)
+    {
+        record_log("ERROR: unable to create led thread.");
     }
 
     // Open video no.0
     VideoCapture input_cap(0);
+    if (!input_cap.isOpened())
+        {
+            record_log("INPUT VIDEO COULD NOT BE OPENED!");
+            return -1;
+        }
 
     // Set (lower) the resolution for the webcam
     input_cap.set(CV_CAP_PROP_FRAME_WIDTH, X_RESOLUTION);
     input_cap.set(CV_CAP_PROP_FRAME_HEIGHT, Y_RESOLUTION);
 
-    cout << "\nCREATING MAIN IMAGES DIRECTORY\n" << endl;
-    // Create the (final) output destination - where all concatenated
-    // clips will be stored ("Images" directory)
-    path_name = create_dir_path(img_path, "NONE");
-    converted_path = path_name.c_str();
-    create_directory(converted_path, st);
-    cout << "\nDONE CREATING MAIN VIDEOS DIRECTORY\n" << endl;
+    // set compress values
+    compress_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+    compress_params.push_back(COMPRESSION_LEVEL);
 
-    cout << "\nCREATING MAIN VIDEOS DIRECTORY\n" << endl;
-    // Create the (final) output destination - where all concatenated
-    // clips will be stored ("videos" directory)
-    path_name = create_dir_path(vid_path, "NONE");
-    converted_path = path_name.c_str();
-    create_directory(converted_path, st);
-    cout << "\nDONE CREATING MAIN VIDEOS DIRECTORY\n" << endl;
+    /*---------------------------------------------------
+                          MAIN LOOP
+      ---------------------------------------------------*/
+    record_log("starting the loop.");
 
-  /*---------------------------------------------------
-                        MAIN LOOP
-    ---------------------------------------------------*/
-    while(true){
-        // Check that the camera is open for capturing, 
+    while(true)
+    {
+        // Check that the camera is open for capturing,
         // if failure, terminate
-        if (!input_cap.isOpened()) {
-            cout << "\nINPUT VIDEO COULD NOT BE OPENED\n" << endl;
-            return -1;
+
+        if(stopSig)
+        {
+            record_log("Exit signal received, exiting ...");
+            break;
         }
-	if(!isSignalRecieved(ir_in)) {
-	        cout << "RECORDING" << endl;
-		if(input_cap.read(frame) && !stopSig) {
-		     // Open file to write signal data
-		     signals.open("/home/ubuntu/AngryBirds/SDCard/signals.txt",
-                          fstream::in  |
-                          fstream::out |
-                          fstream::app);
 
-                    // Create the initial buffer of frames
-                    if(frames.size() >= limit) {
-	            frames.pop();
-                    frames.push(frame.clone());
-                    } else {
-                        frames.push(frame.clone());
+        if(!input_cap.read(frame))   //stop signal for post proc. maybe remove "read" since we checked camera before
+            record_log("Cannot get frame from the cam.");
+        else
+        {
+            if(frames.size() >= limit)
+            {
+                frames.pop();
+                frames.push(frame.clone());
+            }
+            else
+            {
+                frames.push(frame.clone());
+            }
+
+            if( isActivity & !detected)
+            {
+                cout << "\nEVENT DETECTED\n" << endl;
+                record_log("Event detected.");
+
+                record_log("CREATING SUBDIR TO STORE THE COLLISION.");
+                // Create the sub directory that will store all the
+                // image files per collision event
+                subdir_name = "Cam_0_" + get_date();//device id
+                event_time_for_sig = subdir_name;
+                subdir_path = create_dir_path(img_path, subdir_name);
+                converted_subpath = subdir_path.c_str();
+                create_directory(converted_subpath, st);
+                record_log("DONE CREATING SUBDIR");
+
+                detected = true;
+                limit = POSTTIME;
+            }
+
+            if (detected && frames.size() >= limit)
+            {
+                isActivity = false;
+                // Write the collision sequence into the output sub dir
+                record_log("WRITING THE COLLISION SEQUENCE");
+                im_count = 0;
+                while (!frames.empty())
+                {
+                    im_id = create_im_id(converted_subpath, im_count, false);
+                    try
+                    {
+                        imwrite(im_id, frames.front(), compress_params);
                     }
-
-       		    // Output the analog readings to a signals.txt
-        	    adc =  test_adc->getNumericValue();
-        	    if (adc >= TEST_THRESHOLD) {
-//                    if (tester == 500) { // For testing  ... can delete
-//			tester = 0;
-        	        cout << "\nEVENT DETECTED\n" << endl;
-        	        signals << get_date() << ":    " << adc << endl;
-        	        detected = true;
-             	        limit = POSTTIME;
-        	    }
-//                    tester++;
-
-        	    if (detected && frames.size() >= limit) {
-            	        cout << "\nCREATING SUBDIR TO STORE THIS COLLISION\n" << endl;
-            	        // Create the sub directory that will store all the 
-            	        // image files per collision event
-            	        subdir_name = to_string(dir_count);
-                        subdir_path = create_dir_path(img_path, subdir_name);
-                        converted_subpath = subdir_path.c_str();
-            	        create_directory(converted_subpath, st);
-            	        cout << "\nDONE CREATING THIS SUBDIR\n" << endl;
-
-            	        // Write each frame into an (compressed) jpg img in
-            	        //designated subdir.
-            	        compress_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-            	        compress_params.push_back(COMPRESSION_LEVEL);
-
-            	        // Write the collision sequence into the output sub dir
-            	        cout << "\nWRITING THE COLLISION SEQUENCE\n" << endl;
-            	        frame_count = 0;
-            	        im_count = 0;
-                        while (!frames.empty()) {
-                    	    im_id = create_im_id(converted_subpath, im_count, false);
-                	    try {
-                    	        cout << "\nWRITING FRAME NUMBER: " << frame_count << endl;
-		                imwrite(im_id, frames.front(), compress_params);
-                	    } catch (runtime_error& e) {
-                    	        cerr << "\nEXCEPTION CONVERTING IMAGES\n" << endl;
-                    	        return 1;
-                	    }
-                            frames.pop();
-                            im_count++;
-                            frame_count++;
-                        }
-                        dir_count++;
-                        detected = false;
-                        signals.close();
-                        usleep(100); //check server
+                    catch (runtime_error& e)
+                    {
+                        record_log("EXCEPTION CONVERTING IMAGES");
+                        return 1;
                     }
-                    signals.close();
-	        } else {
-		    break; //break out of infinite while and do cleanup
-	        }
-	    } else {
-		flashLed(5); // Indicate that IR signal has been recieved
-//                input_cap.release(); // Close the camera
-	        sleep(120); // Sleep for 30 minutes // 2 Minutes Test
-//                input_cap.open(0); // Re-open the camera
-                flashLed(5); // Indicate that script will resume
-	}
+                    frames.pop();
+                    im_count++;
+                }
+                record_log("DONE WRITING THE COLLISION SEQUENCE");
+                cout << "write done" << endl;
+                limit = PRETIME;
+                dir_count++;
+                detected = false;
+                usleep(100); //check server
+            }
+        }
     } // End While
+    ledOut->setValue(low);
     input_cap.release();
-    cout << "\nSTOPPED\n" << endl;
+    record_log("Exit successful.");
+    usleep(500000);
 } // End Main
 
 
@@ -222,28 +246,48 @@ int main()
 /* Description: Creates a new directory to store (temp)
  *              footage (for each event) for post processing
  */
-string create_dir_path(string path, string sub_dir_name) {
-   if (sub_dir_name.compare("NONE") == 0) {
-      return path;
-   }
-   string dir_name;
-   dir_name = path + "/" + sub_dir_name;
-   return dir_name;
+ void record_log(const char *message)
+ {
+     ab_log.open("/home/ubuntu/AngryBirds/SDCard/log.txt",fstream::in | fstream::out | fstream::app);
+     ab_log << get_date() << " - " << message << endl;
+     ab_log.close();
+ }
+
+string create_dir_path(string path, string sub_dir_name)
+{
+    if (sub_dir_name.compare("NONE") == 0)
+    {
+        return path;
+    }
+    string dir_name;
+    dir_name = path + "/" + sub_dir_name;
+    return dir_name;
 }
 
 
 /* Description: Creates a new directory to store footage if
  *              it doesn't exist
  */
-void create_directory(const char *path, struct stat &st) {
-    if(stat(path, &st) != 0) {
-        if(errno == ENOENT) {
-            cout << "Creating a new video directory" << endl;
-            if(mkdir(path, S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH) == 0) {
+void create_directory(const char *path, struct stat &st)
+{
+    if(stat(path, &st) != 0)
+    {
+        if(errno == ENOENT)
+        {
+            record_log("CREATING A NEW SUBDIRECTORY");
+            if(!mkdir(path, S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH) == 0)
+            {
                 perror("mkdir");
             }
+            else
+                record_log(path);
+                record_log("CREATED.");
         }
+        else
+            record_log("error = ENOENT");
     }
+    else
+        record_log("path and st = 0");
 }
 
 
@@ -252,14 +296,15 @@ void create_directory(const char *path, struct stat &st) {
  *       HOUR_MINUTE_SEC because colons are considered a invalid
   *       character in naming files.
  */
-string get_date() {
+string get_date()
+{
     time_t rawtime;
     struct tm *timeinfo;
     char buffer[80];
 
     time(&rawtime);
     timeinfo = localtime(&rawtime);
-    strftime(buffer, 80, "%F__%H_%M_%S", timeinfo);
+    strftime(buffer, 80, "%F_%H_%M_%S", timeinfo);
     return(string(buffer));
 }
 
@@ -267,30 +312,39 @@ string get_date() {
 /* Description: Creates a new ID to name output image file
  *              in format "Year-Month-Day Hour_Minute_Second__#"
  */
-string create_im_id(string path, int im_count, bool is_dated) {
-     string str_im_count;
-     string abs_path;
-     str_im_count = to_string(im_count);
-     if (is_dated) {
-         return(path + "/" + get_date() + "__" + str_im_count + ".jpg");
-     } else {
-         // Need to find a better way of doing this later ...
-         // (For a 35 sec video - need 700 frames)
-         if (im_count < 10) {
-             str_im_count = string(1, '0').append(str_im_count);
-         }
-         if (im_count < 100) {
-             str_im_count = string(1, '0').append(str_im_count);
-         }
-         return(path + "/" + str_im_count + ".jpg");
-     }
+string create_im_id(string path, int im_count, bool is_dated)
+{
+    string str_im_count;
+    string abs_path;
+    str_im_count = to_string(im_count);
+    if (is_dated)
+    {
+        return(path + "/" + get_date() + "__" + str_im_count + ".jpg");
+    }
+    else
+    {
+        // Need to find a better way of doing this later ...
+        // (For a 35 sec video - need 700 frames)
+
+        if (im_count < 10)
+        {
+            str_im_count = string(1, '0').append(str_im_count);
+        }
+        if (im_count < 100)
+        {
+            str_im_count = string(1, '0').append(str_im_count);
+        }
+
+        return(path + "/" + str_im_count + ".jpg");
+    }
 }
 
 
 /* Description: Creates a new ID to name output video file
  *              in format "Year-Month-Day Hour_Minute_Second"
  */
-string create_vid_id(string path, bool collision) {
+string create_vid_id(string path, bool collision)
+{
     if (collision)
     {
         return (path + get_date() + ".avi");
@@ -302,62 +356,139 @@ string create_vid_id(string path, bool collision) {
 
 /*
  */
-void *listenForExit(void* i){
+void *listenForExit(void* param)
+{
     bool recievedData = false;
-    try {
+    try
+    {
         ServerSocket server(PORT_NUMBER);
 
         ServerSocket new_sock;
         server.accept(new_sock);
 
-        while(true && !recievedData){
-            try {
+        while(true && !recievedData)
+        {
+            try
+            {
                 string data;
                 new_sock >> data; //storing data recieved from socket
                 recievedData = true; //uncomment this for an infiite loop
-            } catch(SocketException&){
+            }
+            catch(SocketException&)
+            {
             }
         }
         stopSig = true;
-    } catch(SocketException&){
+    }
+    catch(SocketException&)
+    {
     }
     pthread_exit(NULL);
 }
 
+void* ADXL_sig(void* param)
+{
+    //setup ADXL
+    BBB_I2C i2c;
+	ADXL345 adxl(i2c);
+	adxl.initialize();
+	if(adxl.getLinkEnabled())
+        record_log("ADXL initialized.");
+	int16_t last_x, x;
+	int16_t last_y, y;
+	int16_t last_z, z;
+	queue <int16_t> sig_x, sig_y, sig_z;
+	bool save = false;
+	int sig_limit = SIG_PRETIME;
 
-/* Returns true if an IR signal has been recieved
- */
-bool isSignalRecieved(BlackGPIO *ir_in) {
-    if (ir_in->fail()) {
-        cout << "ERROR!" << endl;
-    }
-    cout << "GPIO pin value: " << ir_in->getValue() << endl;
-    if (ir_in->isHigh()) {
-        // Flash the LED to indicate signal has been recieved
-        flashLed(5);
-        cout << "SIGNAL HEARD! - STOP SCRIPT" << endl;
-        return true;
-    } else {
-        return false;
-    }
+	ofstream sig_log;
+	const char* file_name;
+	string file_path;
+    usleep(ADXL_DELAY_US);
+	adxl.getAcceleration(&last_x, &last_y, &last_z);
+	usleep(ADXL_DELAY_US);
+
+	while(!stopSig)
+	{
+	    adxl.getAcceleration(&x, &y, &z);
+        if( ((last_x > x+ADXL_THRESH) | (last_y > y+ADXL_THRESH) | (last_z > z+ADXL_THRESH) | (last_x < x-ADXL_THRESH) | (last_y < y-ADXL_THRESH) | (last_z < z-ADXL_THRESH)) & !isActivity )
+        {
+            isActivity = true;
+            save = true;
+            sig_limit = SIG_POSTTIME;
+            printf("activity!!\n");
+            printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+        }
+
+        last_x = x;
+        last_y = y;
+        last_z = z;
+
+        if(sig_x.size() >= sig_limit)
+        {
+            sig_x.pop();
+            sig_x.push(x);
+            sig_y.pop();
+            sig_y.push(y);
+            sig_z.pop();
+            sig_z.push(z);
+        }
+        else
+        {
+            sig_x.push(x);
+            sig_y.push(y);
+            sig_z.push(z);
+        }
+
+        if(save & (sig_x.size() >= sig_limit) )
+        {
+            file_path = "/home/ubuntu/AngryBirds/SDCard/videos/" + event_time_for_sig + ".txt";
+            file_name = file_path.c_str();
+            sig_log.open(file_name, fstream::in | fstream::out | fstream::app);
+            while(sig_x.size())
+            {
+                sig_log << sig_x.front() << ", " << sig_y.front() << ", " << sig_z.front() << endl;
+                sig_x.pop();
+                sig_y.pop();
+                sig_z.pop();
+            }
+            sig_log.close();
+            save = false;
+            sig_limit = SIG_PRETIME;
+        }
+
+        usleep(ADXL_DELAY_US);
+	}
+	pthread_exit(NULL);
 }
 
+void* led_live(void* param)
+{
+    while(!stopSig)
+    {
+        flashLed(5, 500000); // Indicate that IR signal has been recieved
+//                input_cap.release(); // Close the camera
+        sleep(1); // Sleep for 30 minutes // 2 Minutes Test
+//                input_cap.open(0); // Re-open the camera
+        flashLed(5, 100000); // Indicate that script will resume
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
 
 /* Flash the LED (P9_11 - GPIO 30)
  */
-void flashLed(int numTimes) {
-    // Set up the output pin for controlling the LED light
-    BlackGPIO *ledOut = new BlackGPIO(GPIO_30, output);  // P9_11
-
+void flashLed(int numTimes, int sleep_period)
+{
     int i = 0;
-    while (i < numTimes) {
+    while (i < numTimes)
+    {
         ledOut->setValue(high);
-        sleep(1);
+        usleep(sleep_period);
         ledOut->setValue(low);
-        sleep(1);
+        usleep(sleep_period);
         i++;
     }
-
 }
 
 
