@@ -38,6 +38,8 @@ using namespace cacaosd_adxl345;
 #define COMPRESSION_LEVEL  60
 #define PORT_NUMBER        30000
 #define BAUD_RATE          115200
+#define LED_NORM	        500000
+#define LED_DETECT	        100000
 
 #define ADXL_DELAY_US       25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
 #define ADXL_THRESH         5
@@ -55,6 +57,8 @@ void* led_live(void* param);
 void* ADXL_sig(void* param);
 void flashLed(int numTimes, int sleep_period);
 void record_log(const char *message);
+
+int led_speed;
 
 bool stopSig;
 bool isActivity;
@@ -129,7 +133,7 @@ int main()
     {
         record_log("ERROR: unable to create ADXL thread.");
     }
-
+    led_speed = LED_NORM;
     ledOut = new BlackGPIO(GPIO_30, output);// GPIO_30 = pin9-11
     rc = pthread_create(&led_thread, NULL, led_live, (void*) NULL);
     if(rc)
@@ -185,7 +189,6 @@ int main()
 
             if( isActivity & !detected)
             {
-                cout << "\nEVENT DETECTED\n" << endl;
                 record_log("Event detected.");
 
                 record_log("CREATING SUBDIR TO STORE THE COLLISION.");
@@ -199,6 +202,7 @@ int main()
                 record_log("DONE CREATING SUBDIR");
 
                 detected = true;
+                led_speed = LED_DETECT;
                 limit = POSTTIME;
             }
 
@@ -224,10 +228,10 @@ int main()
                     im_count++;
                 }
                 record_log("DONE WRITING THE COLLISION SEQUENCE");
-                cout << "write done" << endl;
                 limit = PRETIME;
                 dir_count++;
                 detected = false;
+                led_speed = LED_NORM;
                 usleep(100); //check server
             }
         }
@@ -416,8 +420,8 @@ void* ADXL_sig(void* param)
             isActivity = true;
             save = true;
             sig_limit = SIG_POSTTIME;
-            printf("activity!!\n");
-            printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+            //printf("activity!!\n");
+            //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
         }
 
         last_x = x;
@@ -466,11 +470,11 @@ void* led_live(void* param)
 {
     while(!stopSig)
     {
-        flashLed(5, 500000); // Indicate that IR signal has been recieved
+        flashLed(5, led_speed); // Indicate that IR signal has been recieved
 //                input_cap.release(); // Close the camera
         sleep(1); // Sleep for 30 minutes // 2 Minutes Test
 //                input_cap.open(0); // Re-open the camera
-        flashLed(5, 100000); // Indicate that script will resume
+        flashLed(5, led_speed); // Indicate that script will resume
         sleep(1);
     }
     pthread_exit(NULL);
