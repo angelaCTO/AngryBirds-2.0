@@ -27,10 +27,10 @@ using namespace cacaosd_adxl345;
 /*-------------------------------------------------
              PREPROCESSOR CONSTANTS
   -------------------------------------------------*/
-#define PRETIME            64  //  64/16 = 4             sec before collision
-#define POSTTIME           128 // 128/16 - 4 = 8 - 4 = 4 sec after  collision
-#define SIG_PRETIME         40 // 1 sec before - if you want to change this, change ADXL_DELAY_US too
-#define SIG_POSTTIME        120 // 2 sec after - if you want to change this, change ADXL_DELAY_US too
+#define PRETIME            64   //  64/16 = 4             sec before collision
+#define POSTTIME           128  // 128/16 - 4 = 8 - 4 = 4 sec after  collision
+#define SIG_PRETIME        40   // 1 sec before - if you want to change this, change ADXL_DELAY_US too
+#define SIG_POSTTIME       120  // 2 sec after - if you want to change this, change ADXL_DELAY_US too
 #define FPS                20
 #define X_RESOLUTION       352
 #define Y_RESOLUTION       288
@@ -38,11 +38,11 @@ using namespace cacaosd_adxl345;
 #define COMPRESSION_LEVEL  60
 #define PORT_NUMBER        30000
 #define BAUD_RATE          115200
-#define LED_NORM	        500000
-#define LED_DETECT	        100000
+#define LED_NORM           500000
+#define LED_DETECT         100000
 
-#define ADXL_DELAY_US       25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
-#define ADXL_THRESH         5
+#define ADXL_DELAY_US      25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
+#define ADXL_THRESH        5
 
 /*-----------------------------------------------------
               FUNCTION PROTPOTYPES
@@ -58,8 +58,6 @@ void* ADXL_sig(void* param);
 void flashLed(int numTimes, int sleep_period);
 void record_log(const char *message);
 
-int led_speed;
-
 bool stopSig;
 bool isActivity;
 ofstream ab_log;
@@ -67,6 +65,10 @@ string event_time_for_sig;
 
 // Set up the output pin for controlling the LED light
 BlackGPIO *ledOut;
+
+// Keep track of number of running threads
+int led_thread_count = 0;
+int led_speed;
 
 int main()
 {
@@ -81,13 +83,13 @@ int main()
     string  path_name;
     string  subdir_name;
     string  subdir_path;
-    int     dir_count       = 0;
-    int     im_count        = 0;
+    int     dir_count           = 0;
+    int     im_count            = 0;
     int     rc;
-    int     limit           = PRETIME;
-    bool    save            = false;
-    bool    detected        = false;
-    bool    collision       = false;
+    int     limit               = PRETIME;
+    bool    save                = false;
+    bool    detected            = false;
+    bool    collision           = false;
     const char* converted_path;
     const char* converted_subpath;
 
@@ -128,11 +130,13 @@ int main()
     }
 
     isActivity = false;
+    led_thread_count++;
     rc = pthread_create(&ADXL_thread, NULL, ADXL_sig, (void*) NULL);
     if(rc)
     {
         record_log("ERROR: unable to create ADXL thread.");
     }
+
     led_speed = LED_NORM;
     ledOut = new BlackGPIO(GPIO_30, output);// GPIO_30 = pin9-11
     rc = pthread_create(&led_thread, NULL, led_live, (void*) NULL);
@@ -144,16 +148,16 @@ int main()
     // Open video no.0
     VideoCapture input_cap(0);
     if (!input_cap.isOpened())
-        {
-            record_log("INPUT VIDEO COULD NOT BE OPENED!");
-            return -1;
-        }
+    {
+        record_log("INPUT VIDEO COULD NOT BE OPENED!");
+        return -1;
+    }
 
     // Set (lower) the resolution for the webcam
     input_cap.set(CV_CAP_PROP_FRAME_WIDTH, X_RESOLUTION);
     input_cap.set(CV_CAP_PROP_FRAME_HEIGHT, Y_RESOLUTION);
 
-    // set compress values
+    // Set compress values
     compress_params.push_back(CV_IMWRITE_JPEG_QUALITY);
     compress_params.push_back(COMPRESSION_LEVEL);
 
@@ -162,18 +166,15 @@ int main()
       ---------------------------------------------------*/
     record_log("starting the loop.");
 
-    while(true)
+    while(1)
     {
-        // Check that the camera is open for capturing,
-        // if failure, terminate
-
         if(stopSig)
         {
             record_log("Exit signal received, exiting ...");
             break;
         }
 
-        if(!input_cap.read(frame))   //stop signal for post proc. maybe remove "read" since we checked camera before
+        if(!input_cap.read(frame))   
             record_log("Cannot get frame from the cam.");
         else
         {
@@ -193,7 +194,7 @@ int main()
 
                 record_log("CREATING SUBDIR TO STORE THE COLLISION.");
                 // Create the sub directory that will store all the
-                // image files per collision event
+            // image files per collision event
                 subdir_name = "Cam_0_" + get_date();//device id
                 event_time_for_sig = subdir_name;
                 subdir_path = create_dir_path(img_path, subdir_name);
@@ -232,31 +233,36 @@ int main()
                 dir_count++;
                 detected = false;
                 led_speed = LED_NORM;
-                usleep(100); //check server
+                usleep(100); // Check server
             }
         }
-    } // End While
+    } 
     ledOut->setValue(low);
+    while (led_thread_count > 0) 
+    { 
+        sleep(1); // wait for all threads to finish
+    } 
     input_cap.release();
     record_log("Exit successful.");
     usleep(500000);
-} // End Main
+} 
 
 
 
 /*---------------------------------------------------------
                   FUNCTION DEFINITIONS
   ---------------------------------------------------------*/
-/* Description: Creates a new directory to store (temp)
- *              footage (for each event) for post processing
- */
- void record_log(const char *message)
- {
+
+// Record system data
+void record_log(const char *message)
+{
      ab_log.open("/home/ubuntu/AngryBirds/SDCard/log.txt",fstream::in | fstream::out | fstream::app);
      ab_log << get_date() << " - " << message << endl;
      ab_log.close();
- }
+|
 
+
+// Creates a new directory path
 string create_dir_path(string path, string sub_dir_name)
 {
     if (sub_dir_name.compare("NONE") == 0)
@@ -269,9 +275,7 @@ string create_dir_path(string path, string sub_dir_name)
 }
 
 
-/* Description: Creates a new directory to store footage if
- *              it doesn't exist
- */
+// Creates a new directory to store footage if it doesn't exist
 void create_directory(const char *path, struct stat &st)
 {
     if(stat(path, &st) != 0)
@@ -295,11 +299,7 @@ void create_directory(const char *path, struct stat &st)
 }
 
 
-/* Description: Returns the current system time
- * Note: time portion of datetime stamp is formated as
- *       HOUR_MINUTE_SEC because colons are considered a invalid
-  *       character in naming files.
- */
+// Returns the current system time
 string get_date()
 {
     time_t rawtime;
@@ -313,9 +313,8 @@ string get_date()
 }
 
 
-/* Description: Creates a new ID to name output image file
- *              in format "Year-Month-Day Hour_Minute_Second__#"
- */
+// Creates a new ID to name output image file in format 
+// "Year-Month-Day Hour_Minute_Second__#"
 string create_im_id(string path, int im_count, bool is_dated)
 {
     string str_im_count;
@@ -327,9 +326,6 @@ string create_im_id(string path, int im_count, bool is_dated)
     }
     else
     {
-        // Need to find a better way of doing this later ...
-        // (For a 35 sec video - need 700 frames)
-
         if (im_count < 10)
         {
             str_im_count = string(1, '0').append(str_im_count);
@@ -344,9 +340,8 @@ string create_im_id(string path, int im_count, bool is_dated)
 }
 
 
-/* Description: Creates a new ID to name output video file
- *              in format "Year-Month-Day Hour_Minute_Second"
- */
+// Creates a new ID to name output video file in format 
+// "Year-Month-Day Hour_Minute_Second"
 string create_vid_id(string path, bool collision)
 {
     if (collision)
@@ -358,8 +353,7 @@ string create_vid_id(string path, bool collision)
 }
 
 
-/*
- */
+//
 void *listenForExit(void* param)
 {
     bool recievedData = false;
@@ -375,47 +369,46 @@ void *listenForExit(void* param)
             try
             {
                 string data;
-                new_sock >> data; //storing data recieved from socket
-                recievedData = true; //uncomment this for an infiite loop
+                new_sock >> data;        // Storing data recieved from socket
+                recievedData = true;     // Uncomment this for an infiite loop
             }
-            catch(SocketException&)
-            {
-            }
+            catch(SocketException&) {}
         }
         stopSig = true;
     }
-    catch(SocketException&)
-    {
-    }
+    catch(SocketException&) {}
     pthread_exit(NULL);
 }
 
+// ADXL345 Acceerlometer
 void* ADXL_sig(void* param)
 {
-    //setup ADXL
+    // Setup ADXL
     BBB_I2C i2c;
-	ADXL345 adxl(i2c);
-	adxl.initialize();
-	if(adxl.getLinkEnabled())
+    ADXL345 adxl(i2c);
+    adxl.initialize();
+    if(adxl.getLinkEnabled())
         record_log("ADXL initialized.");
-	int16_t last_x, x;
-	int16_t last_y, y;
-	int16_t last_z, z;
-	queue <int16_t> sig_x, sig_y, sig_z;
-	bool save = false;
-	int sig_limit = SIG_PRETIME;
+    int16_t last_x, x;
+    int16_t last_y, y;
+    int16_t last_z, z;
+    queue <int16_t> sig_x, sig_y, sig_z;
+    bool save = false;
+    int sig_limit = SIG_PRETIME;
 
-	ofstream sig_log;
-	const char* file_name;
-	string file_path;
+    ofstream sig_log;
+    const char* file_name;
+    string file_path;
     usleep(ADXL_DELAY_US);
-	adxl.getAcceleration(&last_x, &last_y, &last_z);
-	usleep(ADXL_DELAY_US);
+    adxl.getAcceleration(&last_x, &last_y, &last_z);
+    usleep(ADXL_DELAY_US);
 
-	while(!stopSig)
-	{
-	    adxl.getAcceleration(&x, &y, &z);
-        if( ((last_x > x+ADXL_THRESH) | (last_y > y+ADXL_THRESH) | (last_z > z+ADXL_THRESH) | (last_x < x-ADXL_THRESH) | (last_y < y-ADXL_THRESH) | (last_z < z-ADXL_THRESH)) & !isActivity )
+    while(!stopSig)
+    {
+        adxl.getAcceleration(&x, &y, &z);
+        if(((last_x > x+ADXL_THRESH) | (last_y > y+ADXL_THRESH)  | 
+            (last_z > z+ADXL_THRESH) | (last_x < x-ADXL_THRESH)  | 
+            (last_y < y-ADXL_THRESH) | (last_z < z-ADXL_THRESH)) & !isActivity )
         {
             isActivity = true;
             save = true;
@@ -460,28 +453,26 @@ void* ADXL_sig(void* param)
             save = false;
             sig_limit = SIG_PRETIME;
         }
-
         usleep(ADXL_DELAY_US);
-	}
-	pthread_exit(NULL);
-}
-
-void* led_live(void* param)
-{
-    while(!stopSig)
-    {
-        flashLed(5, led_speed); // Indicate that IR signal has been recieved
-//                input_cap.release(); // Close the camera
-        sleep(1); // Sleep for 30 minutes // 2 Minutes Test
-//                input_cap.open(0); // Re-open the camera
-        flashLed(5, led_speed); // Indicate that script will resume
-        sleep(1);
     }
     pthread_exit(NULL);
 }
 
-/* Flash the LED (P9_11 - GPIO 30)
- */
+// Flash LED to indicate system status
+void* led_live(void* param)
+{
+    while(!stopSig)
+    {
+        flashLed(5, led_speed); 
+        sleep(1);               
+        flashLed(5, led_speed); 
+        sleep(1);
+    }
+    led_thread_count--;
+    pthread_exit(NULL);
+}
+
+// Flash the LED (P9_11 - GPIO 30)
 void flashLed(int numTimes, int sleep_period)
 {
     int i = 0;
@@ -494,6 +485,5 @@ void flashLed(int numTimes, int sleep_period)
         i++;
     }
 }
-
 
 //-----EOF-----
