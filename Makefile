@@ -28,8 +28,6 @@ clean:
 	rm -rf *.o main
 	rm -rf bin/main 
 	$(MAKE) -C BlackLib clean
-	$(MAKE) -C cron clean
-	$(MAKE) -C SensorSignal clean
 	$(MAKE) -C Server clean
 	$(MAKE) -C Client clean
 	$(MAKE) -C Socket clean
