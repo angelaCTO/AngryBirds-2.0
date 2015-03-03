@@ -83,13 +83,13 @@ int main()
     string  path_name;
     string  subdir_name;
     string  subdir_path;
-    int     dir_count           = 0;
-    int     im_count            = 0;
+    int     dir_count       	= 0;
+    int     im_count        	= 0;
     int     rc;
-    int     limit               = PRETIME;
-    bool    save                = false;
-    bool    detected            = false;
-    bool    collision           = false;
+    int     limit           	= PRETIME;
+    bool    save            	= false;
+    bool    detected        	= false;
+    bool    collision       	= false;
     const char* converted_path;
     const char* converted_subpath;
 
@@ -194,7 +194,7 @@ int main()
 
                 record_log("CREATING SUBDIR TO STORE THE COLLISION.");
                 // Create the sub directory that will store all the
-            // image files per collision event
+		// image files per collision event
                 subdir_name = "Cam_0_" + get_date();//device id
                 event_time_for_sig = subdir_name;
                 subdir_path = create_dir_path(img_path, subdir_name);
@@ -371,7 +371,7 @@ void *listenForExit(void* param)
                 string data;
                 new_sock >> data;        // Storing data recieved from socket
                 recievedData = true;     // Uncomment this for an infiite loop
-            }
+           }
             catch(SocketException&) {}
         }
         stopSig = true;
@@ -387,8 +387,10 @@ void* ADXL_sig(void* param)
     BBB_I2C i2c;
     ADXL345 adxl(i2c);
     adxl.initialize();
-    if(adxl.getLinkEnabled())
+    if(adxl.getLinkEnabled()) 
+    {
         record_log("ADXL initialized.");
+    }	
     int16_t last_x, x;
     int16_t last_y, y;
     int16_t last_z, z;
@@ -486,4 +488,3 @@ void flashLed(int numTimes, int sleep_period)
     }
 }
 
-//-----EOF-----
