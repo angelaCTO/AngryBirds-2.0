@@ -19,7 +19,8 @@
 #define	ADXL345_H
 #include "BBB_I2C.h"
 
-#define I2C_BUS 1
+// Already defined in BBB_I2C.h
+//#define I2C_BUS 1
 
 #define ADXL345_DEFAULT_ADDRESS 0x53
 #define ADXL345_RA_DEVID            0x00

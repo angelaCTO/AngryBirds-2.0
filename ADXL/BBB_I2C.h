@@ -27,7 +27,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define I2C_BUS 1
+#define I2C_BUS 2
 #define PATH_SIZE 15
 
 #define msg_error(M, ...) printf("[ERROR]:"M"\n",##__VA_ARGS__);
