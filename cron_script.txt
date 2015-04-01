@@ -1,0 +1,16 @@
+# Mount the SD Card
+@reboot sudo mount /dev/mmcblk1p1/ /home/ubuntu/AngryBirds/SDCard/ -t auto
+
+# Clock Init
+@reboot cd /home/ubuntu/AngryBirds/boot_scripts/ && sudo ./clock_init
+
+# Start Main
+@reboot cd /home/ubuntu/AngryBirds/ && sudo ./main	
+
+# Send Stop + Process Dir
+0 */1 * * * cd /home/ubuntu/AngryBirds/ && sudo ./sendStop && cd /home/ubuntu/AngryBirds/Concat/ && sudo ./process_dirs
+
+# Restart Main
+1 */1 * * * cd /home/ubuntu/AngryBirds/ && sudo ./main
+
+
