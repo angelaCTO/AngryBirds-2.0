@@ -1,11 +1,16 @@
 #! /bin/bash
 
 path=/home/ubuntu/AngryBirds/SDCard/images/
+path2=/home/ubuntu/AngryBirds/SDCard/images_old/
 script=/home/ubuntu/AngryBirds/Concat/concat_test.sh
+
+# Rename current images folder to images_old
+mv $path $path2
+mkdir $path
 
 # Concat all the image files into video clips
 echo "ATTEMPTING TO CONCAT IMAGES INTO AVI ..."
-find ${path:?} -type d | while read dir; do
+find ${path2:?} -type d | while read dir; do
      echo "PROCESSING DIRECTORY: $dir"
      cd $dir
      now=$(date +"%m-%d-%Y_%H.%M.%S")
@@ -26,5 +31,6 @@ echo
 
 # Keep the videos, remove the images
 echo "REMOVING IMAGES DIR AND ITS CONTENTS ..."
-sudo rm -r /home/ubuntu/AngryBirds/SDCard/images/
+# rm -r /home/ubuntu/AngryBirds/SDCard/images_old/
+sudo rm -r $path2 
 echo "DONE"
