@@ -18,7 +18,7 @@ find ${path2:?} -type d | while read dir; do
      echo "$now"
      id="/home/ubuntu/AngryBirds/SDCard/videos/$now.avi"
      echo "$id"
-     sudo avconv -f image2 -r 20 -i "$dir"%03d.jpg -b:v 1000k "$id"
+     sudo avconv -f image2 -r 20 -i "$dir"/%03d.jpg -b:v 1000k "$id"
      echo
 done
 echo "DONE"
