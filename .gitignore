@@ -2,6 +2,7 @@
 .profile
 .sudo_as*
 *.o
+*.swp
 .cache/
 SDCard/*
 .nano*
