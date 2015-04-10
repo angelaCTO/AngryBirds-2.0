@@ -22,13 +22,13 @@
 # m h  dom mon dow   command
 
 # Clock Init
-@reboot cd /home/ubuntu/AngryBirds/boot_scripts/ && sudo ./clock_init
+@reboot sleep 20 && cd /home/ubuntu/AngryBirds/boot_scripts/ && sudo ./clock_init
 
 # Mount the SD Card -- Need to insert the SDCARD !
-@reboot sudo /home/ubuntu/AngryBirds/boot_scripts/autoMount.sh
+@reboot sleep 20 && sudo /home/ubuntu/AngryBirds/boot_scripts/autoMount.sh
 
 # Start Main
-@reboot cd /home/ubuntu/AngryBirds/ && sudo ./main
+@reboot sleep 30 && cd /home/ubuntu/AngryBirds/ && sudo ./main
 
 # Send Stop + Process Dir
 0 */1 * * * cd /home/ubuntu/AngryBirds/ && sudo ./sendStop && cd /home/ubuntu/AngryBirds/Concat/ && sudo ./process_dirs
