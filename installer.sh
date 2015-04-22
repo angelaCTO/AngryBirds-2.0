@@ -27,10 +27,17 @@ echo "\n------------------------INSTALL OPENCV--------------------"
 	echo $PWD | sudo -S apt-get --assume-yes install libopencv-dev
 ) && echo 'OpenCV Install OK' || (echo 'OpenCV Install FAILED' && exit)
 
+echo "\n------------------------INSTALL LIBAV---------------------" 
+(
+	echo $PWD | sudo -S apt-get --assume-yes install libav-tools
+) && echo 'OpenCV Install OK' || (echo 'OpenCV Install FAILED' && exit)
+
 echo "\n------------------------CLONE REPO------------------------" 
 (
 	git clone https://github.com/angelaCTO/AngryBirds-2.0.git
 ) && echo 'Repo Clone OK' || echo 'Repo Clone FAILED';
+
+mv AngryBirds-2.0 AngryBirds
 
 echo "\nDONE!\n"
 
