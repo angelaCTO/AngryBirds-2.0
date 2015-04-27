@@ -421,7 +421,7 @@ void* ADXL_sig(void* param)
             save = true;
             sig_limit = SIG_POSTTIME;
             //printf("activity!!\n");
-            //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+            printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
         }
 
         last_x = x;

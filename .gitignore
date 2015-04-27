@@ -14,3 +14,5 @@ Enclosure_Design/*
 AngryBirdsSchematicDocumentation.pptx
 installer.sh
 ADXL/TestADXL345
+.DS_Store
+boot/.DS_Store
