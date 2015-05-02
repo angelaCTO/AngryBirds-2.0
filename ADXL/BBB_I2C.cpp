@@ -421,16 +421,20 @@ uint8_t * BBB_I2C::readBytes(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
 	buffer[4] = DATA_REGADD4;
 	buffer[5] = DATA_REGADD5;
 
-	//writes to file from buffer to file with size 1 byte
-	if (write(file, buffer, 6) != 6) {
-		msg_error("Can not write data. Address %d.", DEV_ADD);
-	}
-
 	uint8_t *value = new uint8_t[6];
 
-	//read file to into value buffer with size 1  byte
-	if (read(file, value, 6) != 6) {
-		msg_error("Can not read data. Address %d.", DEV_ADD);
+	for(int i =0; i < 6; i++){
+		//writes to file from buffer to file with size 1 byte
+		if (write(file, buffer+i, 1) != 1) {
+			msg_error("Can not write data. Address %d.", DEV_ADD);
+		}
+
+
+
+		//read file to into value buffer with size 1  byte
+		if (read(file, value+i, 1) != 1) {
+			msg_error("Can not read data. Address %d.", DEV_ADD);
+		}
 	}
 
 	close(file);
