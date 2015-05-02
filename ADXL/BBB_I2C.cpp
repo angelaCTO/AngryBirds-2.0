@@ -284,12 +284,14 @@ uint8_t BBB_I2C::readByte(uint8_t DATA_REGADD) {
 	uint8_t buffer[1];
 	buffer[0] = DATA_REGADD;
 
+	//writes to file from buffer to file with size 1 byte
 	if (write(file, buffer, 1) != 1) {
 		msg_error("Can not write data. Address %d.", DEV_ADD);
 	}
 
 	uint8_t value[1];
 
+	//read file to into value buffer with size 1  byte
 	if (read(file, value, 1) != 1) {
 		msg_error("Can not read data. Address %d.", DEV_ADD);
 	}
@@ -327,6 +329,7 @@ void BBB_I2C::readByteBuffer(uint8_t DATA_REGADD, uint8_t *data,
 
 }
 
+
 /**
  * @function readByteBufferArduino(uint8_t DEV_ADD, uint8_t* data, uint8_t length)
  * @param DEV_ADD Arduino Device Address.
@@ -347,8 +350,7 @@ void BBB_I2C::readByteBufferArduino(uint8_t* data, uint8_t length) {
 }
 
 /**
- * @function readWord(uint8_t DEV_ADD, uint8_t MSB, uint8_t LSB)
- * @param DEV_ADD Arduino Device Address.
+ * @function readWord(uint8_t MSB, uint8_t LSB)
  * @param MSB 16-bit values Most Significant Byte Address.
  * @param LSB 16-bit values Less Significant Byte Address..
  * @return void.
@@ -361,5 +363,75 @@ int16_t BBB_I2C::readWord(uint8_t MSB, uint8_t LSB) {
 
 	return ((int16_t) msb << 8) + lsb;
 }
+
+
+
+
+/**
+ * @function readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint8_t z0, uint8_t z1)
+ * @params the addresses of each MSB LSB x,y,z coordinate
+ * @return uint16_t Byte Array
+ */
+int16_t BBB_I2C::readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint8_t z0, uint8_t z1){
+
+	uint8_t bytesArray = readBytes(x0,x1,y0,y1,z0,z1);
+	
+
+	uint16_t byteArray[3];
+
+	uint8_t msbx = byteArray[1];
+	uint8_t lsbx = byteArray[0];
+	uint8_t msby = byteArray[3];
+	uint8_t lsby = byteArray[2];
+	uint8_t msbz = byteArray[5];
+	uint8_t lsbz = byteArray[4];
+
+	byteArray[0] = ((int16_t) msbx << 8) + lsbx;
+	byteArray[1] = ((int16_t) msby << 8) + lsby;
+	byteArray[2] = ((int16_t) msbz << 8) + lsbz;
+
+	return byteArray;
+
+}
+
+
+/**
+ * @function readStream(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
+	uint8_t DATA_REGADD2,uint8_t DATA_REGADD3,uint8_t DATA_REGADD4,
+	uint8_t DATA_REGADD5)
+ * @params the register addresses of each x,y,z coordinate
+ * @return uint8_t Byte Array
+ */
+uint8_t BBB_I2C::readBytes(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
+	uint8_t DATA_REGADD2,uint8_t DATA_REGADD3,uint8_t DATA_REGADD4,
+	uint8_t DATA_REGADD5) {
+
+	int file = openConnection();
+
+	uint8_t buffer[6];
+	buffer[0] = DATA_REGADD0;
+	buffer[1] = DATA_REGADD1;
+	buffer[2] = DATA_REGADD2;
+	buffer[3] = DATA_REGADD3;
+	buffer[4] = DATA_REGADD4;
+	buffer[5] = DATA_REGADD5;
+
+	//writes to file from buffer to file with size 1 byte
+	if (write(file, buffer, 6) != 6) {
+		msg_error("Can not write data. Address %d.", DEV_ADD);
+	}
+
+	uint8_t value[6];
+
+	//read file to into value buffer with size 1  byte
+	if (read(file, value, 6) != 6) {
+		msg_error("Can not read data. Address %d.", DEV_ADD);
+	}
+
+	close(file);
+
+	return value;
+}
+
 
 }  // namespace cacaosd_bbb_i2c
