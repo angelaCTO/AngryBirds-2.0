@@ -372,12 +372,15 @@ int16_t BBB_I2C::readWord(uint8_t MSB, uint8_t LSB) {
  * @params the addresses of each MSB LSB x,y,z coordinate
  * @return uint16_t Byte Array
  */
-int16_t BBB_I2C::readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint8_t z0, uint8_t z1){
+int16_t * BBB_I2C::readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint8_t z0, uint8_t z1){
 
-	uint8_t bytesArray = readBytes(x0,x1,y0,y1,z0,z1);
+	
+	uint8_t *bytesArray;
+	
+	bytesArray = readBytes(x0,x1,y0,y1,z0,z1);
 	
 
-	int16_t byteArray[3];
+	int16_t *byteArray= new int16_t[3];
 
 	uint8_t msbx = bytesArray[1];
 	uint8_t lsbx = bytesArray[0];
@@ -389,6 +392,8 @@ int16_t BBB_I2C::readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint
 	byteArray[0] = ((int16_t) msbx << 8) + lsbx;
 	byteArray[1] = ((int16_t) msby << 8) + lsby;
 	byteArray[2] = ((int16_t) msbz << 8) + lsbz;
+
+	delete bytesArray;
 
 	return byteArray;
 
@@ -402,7 +407,7 @@ int16_t BBB_I2C::readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint
  * @params the register addresses of each x,y,z coordinate
  * @return uint8_t Byte Array
  */
-uint8_t BBB_I2C::readBytes(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
+uint8_t * BBB_I2C::readBytes(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
 	uint8_t DATA_REGADD2,uint8_t DATA_REGADD3,uint8_t DATA_REGADD4,
 	uint8_t DATA_REGADD5) {
 
@@ -421,7 +426,7 @@ uint8_t BBB_I2C::readBytes(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
 		msg_error("Can not write data. Address %d.", DEV_ADD);
 	}
 
-	uint8_t value[6];
+	uint8_t *value = new uint8_t[6];
 
 	//read file to into value buffer with size 1  byte
 	if (read(file, value, 6) != 6) {

@@ -63,10 +63,10 @@ public:
 	void readByteBufferArduino(uint8_t *data, uint8_t length);
 	int16_t readWord(uint8_t MSB, uint8_t LSB);
 	void setDEV_ADD(uint8_t DEV_ADD);
-	uint8_t readBytes(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
+	uint8_t *readBytes(uint8_t DATA_REGADD0,uint8_t DATA_REGADD1,
 	uint8_t DATA_REGADD2,uint8_t DATA_REGADD3,uint8_t DATA_REGADD4,
 	uint8_t DATA_REGADD5);
-	int16_t readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint8_t z0, uint8_t z1);
+	int16_t *readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint8_t z0, uint8_t z1);
 
 
 private:
