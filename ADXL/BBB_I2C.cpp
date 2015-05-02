@@ -377,7 +377,7 @@ int16_t BBB_I2C::readStream(uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1, uint
 	uint8_t bytesArray = readBytes(x0,x1,y0,y1,z0,z1);
 	
 
-	uint16_t byteArray[3];
+	int16_t byteArray[3];
 
 	uint8_t msbx = bytesArray[1];
 	uint8_t lsbx = bytesArray[0];
