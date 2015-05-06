@@ -416,7 +416,7 @@ void* ADXL_sig(void* param)
     int16_t last2_x, x2;
     int16_t last2_y, y2;
     int16_t last2_z, z2;
-    queue2 <int16_t> sig2_x, sig2_y, sig2_z;
+    queue <int16_t> sig2_x, sig2_y, sig2_z;
     bool save2 = false;
     int sig2_limit = SIG_PRETIME;
 
@@ -492,7 +492,7 @@ void* ADXL_sig(void* param)
         {
             isActivity2 = true;
             save2 = true;
-            sig_limit2 = SIG_POSTTIME;
+            sig2_limit = SIG_POSTTIME;
             //printf("activity!!\n");
             //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
         }
