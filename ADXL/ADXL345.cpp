@@ -1551,6 +1551,20 @@ void ADXL345::getAcceleration(int16_t* x, int16_t* y, int16_t* z) {
 
 }
 
+
+void ADXL345::configureThreshold(int16_t* x, int16_t* y, int16_t* z){
+
+	int16_t *array;
+
+	array = i2c.readStream(ADXL345_RA_DATAX0,ADXL345_RA_DATAX1,
+		ADXL345_RA_DATAY0,ADXL345_RA_DATAY1,ADXL345_RA_DATAZ0,ADXL345_RA_DATAZ1);
+
+	*x = array[0];
+	*y = array[1];
+	*z = array[2];
+
+}
+
 /** Get X-axis accleration measurement.
  * @return 16-bit signed X-axis acceleration value
  * @see ADXL345_RA_DATAX0

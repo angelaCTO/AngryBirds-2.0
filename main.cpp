@@ -62,6 +62,7 @@ int led_speed;
 
 bool stopSig;
 bool isActivity;
+bool isActivity2;
 ofstream ab_log;
 string event_time_for_sig;
 
@@ -395,9 +396,15 @@ void* ADXL_sig(void* param)
     //setup ADXL
     BBB_I2C i2c;
 	ADXL345 adxl(i2c);
+    ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
 	adxl.initialize();
 	if(adxl.getLinkEnabled())
         record_log("ADXL initialized.");
+
+    adxl2.initialize();
+    if(adxl2.getLinkEnabled())
+        record_log("ADXL2 initialized.");
+
 	int16_t last_x, x;
 	int16_t last_y, y;
 	int16_t last_z, z;
@@ -405,12 +412,31 @@ void* ADXL_sig(void* param)
 	bool save = false;
 	int sig_limit = SIG_PRETIME;
 
+
+    int16_t last2_x, x2;
+    int16_t last2_y, y2;
+    int16_t last2_z, z2;
+    queue2 <int16_t> sig2_x, sig2_y, sig2_z;
+    bool save2 = false;
+    int sig2_limit = SIG_PRETIME;
+
+
+
 	ofstream sig_log;
 	const char* file_name;
 	string file_path;
     usleep(ADXL_DELAY_US);
 	adxl.getAcceleration(&last_x, &last_y, &last_z);
 	usleep(ADXL_DELAY_US);
+
+
+    ofstream sig2_log;
+    const char* file2_name;
+    string file2_path;
+    usleep(ADXL_DELAY_US);
+    adxl2.getAcceleration(&last2_x, &last2_y, &last2_z);
+    usleep(ADXL_DELAY_US);
+
 
 	while(!stopSig)
 	{
@@ -459,6 +485,53 @@ void* ADXL_sig(void* param)
             sig_log.close();
             save = false;
             sig_limit = SIG_PRETIME;
+        }
+
+        adxl2.getAcceleration(&x2, &y2, &z2);
+        if( ((last2_x > x2+ADXL_THRESH) | (last2_y > y2+ADXL_THRESH) | (last2_z > z2+ADXL_THRESH) | (last2_x < x2-ADXL_THRESH) | (last2_y < y2-ADXL_THRESH) | (last2_z < z2-ADXL_THRESH)) & !isActivity )
+        {
+            isActivity2 = true;
+            save2 = true;
+            sig_limit2 = SIG_POSTTIME;
+            //printf("activity!!\n");
+            //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+        }
+
+        last2_x = x2;
+        last2_y = y2;
+        last2_z = z2;
+
+        if(sig2_x.size() >= sig_limit)
+        {
+            sig2_x.pop();
+            sig2_x.push(x2);
+            sig2_y.pop();
+            sig2_y.push(y2);
+            sig2_z.pop();
+            sig2_z.push(z2);
+        }
+        else
+        {
+            sig2_x.push(x2);
+            sig2_y.push(y2);
+            sig2_z.push(z2);
+        }
+
+        if(save & (sig2_x.size() >= sig2_limit) )
+        {
+            file2_path = "/home/ubuntu/AngryBirds/SDCard/videos/" + event_time_for_sig + ".txt";
+            file2_name = file_path.c_str();
+            sig2_log.open(file2_name, fstream::in | fstream::out | fstream::app);
+            while(sig2_x.size())
+            {
+                sig2_log << sig2_x.front() << ", " << sig2_y.front() << ", " << sig2_z.front() << endl;
+                sig2_x.pop();
+                sig2_y.pop();
+                sig2_z.pop();
+            }
+            sig2_log.close();
+            save2 = false;
+            sig2_limit = SIG_PRETIME;
         }
 
         usleep(ADXL_DELAY_US);
