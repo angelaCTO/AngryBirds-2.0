@@ -1552,7 +1552,7 @@ void ADXL345::getAcceleration(int16_t* x, int16_t* y, int16_t* z) {
 }
 
 
-void ADXL345::configureThreshold(int16_t* x, int16_t* y, int16_t* z){
+/*void ADXL345::configureThreshold(int16_t* x, int16_t* y, int16_t* z){
 
 	int16_t *array;
 
@@ -1563,7 +1563,7 @@ void ADXL345::configureThreshold(int16_t* x, int16_t* y, int16_t* z){
 	*y = array[1];
 	*z = array[2];
 
-}
+}*/
 
 /** Get X-axis accleration measurement.
  * @return 16-bit signed X-axis acceleration value
