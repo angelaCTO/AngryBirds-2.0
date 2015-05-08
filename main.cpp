@@ -501,7 +501,7 @@ void* ADXL_sig(void* param)
         last2_y = y2;
         last2_z = z2;
 
-        if(sig2_x.size() >= sig_limit)
+        if(sig2_x.size() >= sig2_limit)
         {
             sig2_x.pop();
             sig2_x.push(x2);
@@ -517,7 +517,7 @@ void* ADXL_sig(void* param)
             sig2_z.push(z2);
         }
 
-        if(save & (sig2_x.size() >= sig2_limit) )
+        if(save2 & (sig2_x.size() >= sig2_limit) )
         {
             file2_path = "/home/ubuntu/AngryBirds/SDCard/videos/" + event_time_for_sig + ".txt";
             file2_name = file_path.c_str();
