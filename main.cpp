@@ -42,7 +42,7 @@ using namespace cacaosd_adxl345;
 #define LED_DETECT	        100000
 
 #define ADXL_DELAY_US       25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
-#define ADXL_THRESH         5
+#define ADXL_THRESH         30
 
 /*-----------------------------------------------------
               FUNCTION PROTPOTYPES
@@ -446,11 +446,12 @@ void* ADXL_sig(void* param)
             isActivity = true;
             save = true;
             sig_limit = SIG_POSTTIME;
-            //printf("activity!!\n");
+            printf("activity in ADXL1!!\n");
             //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
         }
-        printf("activity from ADXL1!!\n");
-        printf("dx = %d, dy = %d, dz = %d\n", x, y, z);
+        
+
+        //printf("x1 = %d, y2 = %d, z3 = %d\n", x, y, z);
 
 
         last_x = x;
@@ -496,12 +497,12 @@ void* ADXL_sig(void* param)
             isActivity2 = true;
             save2 = true;
             sig2_limit = SIG_POSTTIME;
-            //printf("activity!!\n");
+            printf("activity in ADXL2!!\n");
             //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
         }
 
-        printf("activity from ADXL2!!\n");
-        printf("dx = %d, dy = %d, dz = %d\n", x2, y2, z2);
+
+        //printf("x2 = %d, y2 = %d, z3 = %d\n", x2, y2, z2);
 
         last2_x = x2;
         last2_y = y2;
