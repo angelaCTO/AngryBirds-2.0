@@ -449,6 +449,9 @@ void* ADXL_sig(void* param)
             //printf("activity!!\n");
             //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
         }
+        printf("activity from ADXL1!!\n");
+        printf("dx = %d, dy = %d, dz = %d\n", x, y, z);
+
 
         last_x = x;
         last_y = y;
@@ -496,6 +499,9 @@ void* ADXL_sig(void* param)
             //printf("activity!!\n");
             //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
         }
+
+        printf("activity from ADXL2!!\n");
+        printf("dx = %d, dy = %d, dz = %d\n", x2, y2, z2);
 
         last2_x = x2;
         last2_y = y2;
