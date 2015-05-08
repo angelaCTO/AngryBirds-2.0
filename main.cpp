@@ -396,14 +396,16 @@ void* ADXL_sig(void* param)
     //setup ADXL
     BBB_I2C i2c;
 	ADXL345 adxl(i2c);
-    ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
+    //ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
 	adxl.initialize();
 	if(adxl.getLinkEnabled())
         record_log("ADXL initialized.");
 
+/*
     adxl2.initialize();
     if(adxl2.getLinkEnabled())
         record_log("ADXL2 initialized.");
+*/
 
 	int16_t last_x, x;
 	int16_t last_y, y;
@@ -412,13 +414,14 @@ void* ADXL_sig(void* param)
 	bool save = false;
 	int sig_limit = SIG_PRETIME;
 
-
+/*
     int16_t last2_x, x2;
     int16_t last2_y, y2;
     int16_t last2_z, z2;
     queue <int16_t> sig2_x, sig2_y, sig2_z;
     bool save2 = false;
     int sig2_limit = SIG_PRETIME;
+*/
 
 
 
@@ -429,13 +432,14 @@ void* ADXL_sig(void* param)
 	adxl.getAcceleration(&last_x, &last_y, &last_z);
 	usleep(ADXL_DELAY_US);
 
-
+/*
     ofstream sig2_log;
     const char* file2_name;
     string file2_path;
     usleep(ADXL_DELAY_US);
     adxl2.getAcceleration(&last2_x, &last2_y, &last2_z);
     usleep(ADXL_DELAY_US);
+*/
 
 
 	while(!stopSig)
@@ -491,6 +495,7 @@ void* ADXL_sig(void* param)
             sig_limit = SIG_PRETIME;
         }
 
+/*
         adxl2.getAcceleration(&x2, &y2, &z2);
         if( ((last2_x > x2+ADXL_THRESH) | (last2_y > y2+ADXL_THRESH) | (last2_z > z2+ADXL_THRESH) | (last2_x < x2-ADXL_THRESH) | (last2_y < y2-ADXL_THRESH) | (last2_z < z2-ADXL_THRESH)) & !isActivity )
         {
@@ -540,6 +545,7 @@ void* ADXL_sig(void* param)
             save2 = false;
             sig2_limit = SIG_PRETIME;
         }
+*/
 
         usleep(ADXL_DELAY_US);
 	}
