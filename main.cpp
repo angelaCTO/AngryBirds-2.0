@@ -3,6 +3,7 @@
 #include <time.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <queue>
 #include <deque>
 #include <vector>
@@ -42,7 +43,7 @@ using namespace cacaosd_adxl345;
 #define LED_DETECT	        100000
 
 #define ADXL_DELAY_US       25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
-#define ADXL_THRESH         30
+#define ADXL_THRESH         15
 
 /*-----------------------------------------------------
               FUNCTION PROTPOTYPES
@@ -69,6 +70,8 @@ string event_time_for_sig;
 // Set up the output pin for controlling the LED light
 BlackGPIO *ledOut;
 
+
+
 int main()
 {
     /*---------------------------------------------------
@@ -91,6 +94,9 @@ int main()
     bool    collision       = false;
     const char* converted_path;
     const char* converted_subpath;
+    struct timeval start, end;
+
+
 
     record_log("CREATING MAIN IMAGES AND VIDEOS DIRECTORY.");
 
@@ -128,8 +134,14 @@ int main()
         record_log("ERROR: unable to create exit thread.");
     }
 
+    // gettimeofday(&start, NULL);
     isActivity = false;
+    isActivity2 = false;
     rc = pthread_create(&ADXL_thread, NULL, ADXL_sig, (void*) NULL);
+    // gettimeofday(&end, NULL);
+    // long long time =   (end.tv_sec * (unsigned int)1e6 +   end.tv_usec) - 
+    //              (start.tv_sec * (unsigned int)1e6 + start.tv_usec);
+    // printf("time: %d\n",time);
     if(rc)
     {
         record_log("ERROR: unable to create ADXL thread.");
@@ -188,7 +200,7 @@ int main()
                 frames.push(frame.clone());
             }
 
-            if( isActivity & !detected)
+            if( isActivity & !detected || isActivity2 & !detected)
             {
                 record_log("Event detected.");
 
@@ -210,6 +222,7 @@ int main()
             if (detected && frames.size() >= limit)
             {
                 isActivity = false;
+                isActivity2 = false;
                 // Write the collision sequence into the output sub dir
                 record_log("WRITING THE COLLISION SEQUENCE");
                 im_count = 0;
@@ -392,20 +405,22 @@ void *listenForExit(void* param)
 }
 
 void* ADXL_sig(void* param)
-{
+{   
+
+
     //setup ADXL
     BBB_I2C i2c;
 	ADXL345 adxl(i2c);
-    //ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
+    ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
 	adxl.initialize();
 	if(adxl.getLinkEnabled())
         record_log("ADXL initialized.");
 
-/*
     adxl2.initialize();
     if(adxl2.getLinkEnabled())
         record_log("ADXL2 initialized.");
-*/
+
+
 
 	int16_t last_x, x;
 	int16_t last_y, y;
@@ -414,14 +429,14 @@ void* ADXL_sig(void* param)
 	bool save = false;
 	int sig_limit = SIG_PRETIME;
 
-/*
+
+
     int16_t last2_x, x2;
     int16_t last2_y, y2;
     int16_t last2_z, z2;
     queue <int16_t> sig2_x, sig2_y, sig2_z;
     bool save2 = false;
     int sig2_limit = SIG_PRETIME;
-*/
 
 
 
@@ -432,14 +447,13 @@ void* ADXL_sig(void* param)
 	adxl.getAcceleration(&last_x, &last_y, &last_z);
 	usleep(ADXL_DELAY_US);
 
-/*
+
     ofstream sig2_log;
     const char* file2_name;
     string file2_path;
     usleep(ADXL_DELAY_US);
     adxl2.getAcceleration(&last2_x, &last2_y, &last2_z);
     usleep(ADXL_DELAY_US);
-*/
 
 
 	while(!stopSig)
@@ -456,6 +470,7 @@ void* ADXL_sig(void* param)
         
 
         //printf("x1 = %d, y2 = %d, z3 = %d\n", x, y, z);
+        // printf("data rate: %d\n",adxl2.getRate());
 
 
         last_x = x;
@@ -495,8 +510,12 @@ void* ADXL_sig(void* param)
             sig_limit = SIG_PRETIME;
         }
 
-/*
+        usleep(ADXL_DELAY_US);
+
+
         adxl2.getAcceleration(&x2, &y2, &z2);
+        // printf("x2 = %d, y2 = %d, z3 = %d\n", x2, y2, z2);
+
         if( ((last2_x > x2+ADXL_THRESH) | (last2_y > y2+ADXL_THRESH) | (last2_z > z2+ADXL_THRESH) | (last2_x < x2-ADXL_THRESH) | (last2_y < y2-ADXL_THRESH) | (last2_z < z2-ADXL_THRESH)) & !isActivity )
         {
             isActivity2 = true;
@@ -507,7 +526,6 @@ void* ADXL_sig(void* param)
         }
 
 
-        //printf("x2 = %d, y2 = %d, z3 = %d\n", x2, y2, z2);
 
         last2_x = x2;
         last2_y = y2;
@@ -532,7 +550,7 @@ void* ADXL_sig(void* param)
         if(save2 & (sig2_x.size() >= sig2_limit) )
         {
             file2_path = "/home/ubuntu/AngryBirds/SDCard/videos/" + event_time_for_sig + ".txt";
-            file2_name = file_path.c_str();
+            file2_name = file2_path.c_str();
             sig2_log.open(file2_name, fstream::in | fstream::out | fstream::app);
             while(sig2_x.size())
             {
@@ -545,7 +563,8 @@ void* ADXL_sig(void* param)
             save2 = false;
             sig2_limit = SIG_PRETIME;
         }
-*/
+
+
 
         usleep(ADXL_DELAY_US);
 	}
