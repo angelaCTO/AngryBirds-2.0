@@ -420,6 +420,8 @@ void* ADXL_sig(void* param)
     if(adxl2.getLinkEnabled())
         record_log("ADXL2 initialized.");
 
+    adxl.setRate(0x0A);
+    adxl2.setRate(0x0A);
 
 
 	int16_t last_x, x;
