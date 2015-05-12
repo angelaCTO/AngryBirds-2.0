@@ -21,8 +21,8 @@
 
 // Already defined in BBB_I2C.h
 //#define I2C_BUS 1
-
 #define ADXL345_DEFAULT_ADDRESS 0x53
+#define ADXL345_ALTERNATE_ADDRESS 0x1D
 #define ADXL345_RA_DEVID            0x00
 #define ADXL345_RA_RESERVED1        0x01
 #define ADXL345_RA_THRESH_TAP       0x1D
