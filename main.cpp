@@ -66,13 +66,14 @@ bool isActivity;
 bool isActivity2;
 ofstream ab_log;
 string event_time_for_sig;
-
+bool twoSensors
+bool debug
 // Set up the output pin for controlling the LED light
 BlackGPIO *ledOut;
 
 
 
-int main()
+int main(int argc, char* argv[])
 {
     /*---------------------------------------------------
             VARIABLE DECLARATIONS / INITIALIZATION
@@ -96,8 +97,15 @@ int main()
     const char* converted_subpath;
     struct timeval start, end;
 
+    if(argv[1] == "-t")
+        twoSensors = true;
+    else
+        twoSensors = false;
 
-
+    if(argv[2] == "-d")
+        debug = true;
+    else
+        debug = false;
     record_log("CREATING MAIN IMAGES AND VIDEOS DIRECTORY.");
 
     string img_path = "/home/ubuntu/AngryBirds/SDCard/images";
@@ -411,51 +419,45 @@ void* ADXL_sig(void* param)
     //setup ADXL
     BBB_I2C i2c;
 	ADXL345 adxl(i2c);
-    ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
 	adxl.initialize();
 	if(adxl.getLinkEnabled())
         record_log("ADXL initialized.");
+     adxl.setRate(0x0A);
+    int16_t last_x, x;
+    int16_t last_y, y;
+    int16_t last_z, z;
+    queue <int16_t> sig_x, sig_y, sig_z;
+    bool save = false;
+    int sig_limit = SIG_PRETIME;
 
+    ofstream sig_log;
+    const char* file_name;
+    string file_path;
+    usleep(ADXL_DELAY_US);
+    adxl.getAcceleration(&last_x, &last_y, &last_z);
+    usleep(ADXL_DELAY_US);
+
+if(twoSensors == true){
+    ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
     adxl2.initialize();
     if(adxl2.getLinkEnabled())
         record_log("ADXL2 initialized.");
-
-    adxl.setRate(0x0A);
     adxl2.setRate(0x0A);
-
-
-	int16_t last_x, x;
-	int16_t last_y, y;
-	int16_t last_z, z;
-	queue <int16_t> sig_x, sig_y, sig_z;
-	bool save = false;
-	int sig_limit = SIG_PRETIME;
-
-
-
     int16_t last2_x, x2;
     int16_t last2_y, y2;
     int16_t last2_z, z2;
     queue <int16_t> sig2_x, sig2_y, sig2_z;
     bool save2 = false;
-    int sig2_limit = SIG_PRETIME;
-
-
-
-	ofstream sig_log;
-	const char* file_name;
-	string file_path;
-    usleep(ADXL_DELAY_US);
-	adxl.getAcceleration(&last_x, &last_y, &last_z);
-	usleep(ADXL_DELAY_US);
-
-
+    int sig2_limit = SIG_PRETIME;  
     ofstream sig2_log;
     const char* file2_name;
     string file2_path;
     usleep(ADXL_DELAY_US);
     adxl2.getAcceleration(&last2_x, &last2_y, &last2_z);
     usleep(ADXL_DELAY_US);
+}
+
+
 
 
 	while(!stopSig)
@@ -466,14 +468,17 @@ void* ADXL_sig(void* param)
             isActivity = true;
             save = true;
             sig_limit = SIG_POSTTIME;
-            printf("activity in ADXL1!!\n");
-            //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+            if(debug == true){
+                printf("activity in ADXL1!!\n");
+                printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+            }
         }
         
 
-        //printf("x1 = %d, y2 = %d, z3 = %d\n", x, y, z);
-        // printf("data rate: %d\n",adxl2.getRate());
-
+        if(debug == true){
+            printf("x1 = %d, y1 = %d, z1 = %d\n", x, y, z);
+            printf("data rate: %d\n",adxl.getRate());
+        }
 
         last_x = x;
         last_y = y;
@@ -514,7 +519,7 @@ void* ADXL_sig(void* param)
 
         usleep(ADXL_DELAY_US);
 
-
+    if(twoSensors == true){
         adxl2.getAcceleration(&x2, &y2, &z2);
         // printf("x2 = %d, y2 = %d, z3 = %d\n", x2, y2, z2);
 
@@ -523,11 +528,16 @@ void* ADXL_sig(void* param)
             isActivity2 = true;
             save2 = true;
             sig2_limit = SIG_POSTTIME;
-            printf("activity in ADXL2!!\n");
-            //printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+            if(debug == true){
+                printf("activity in ADXL2!!\n");
+                printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+            }
         }
 
-
+        if(debug == true){
+            printf("x2 = %d, y2 = %d, z2 = %d\n", x2, y2, z2);
+            printf("data rate: %d\n",adxl2.getRate());
+        }
 
         last2_x = x2;
         last2_y = y2;
@@ -565,11 +575,9 @@ void* ADXL_sig(void* param)
             save2 = false;
             sig2_limit = SIG_PRETIME;
         }
-
-
-
         usleep(ADXL_DELAY_US);
-	}
+    }
+	}//closing bracket for while loop
 	pthread_exit(NULL);
 }
 
