@@ -66,8 +66,8 @@ bool isActivity;
 bool isActivity2;
 ofstream ab_log;
 string event_time_for_sig;
-bool twoSensors
-bool debug
+bool twoSensors;
+bool debug;
 // Set up the output pin for controlling the LED light
 BlackGPIO *ledOut;
 
@@ -97,15 +97,23 @@ int main(int argc, char* argv[])
     const char* converted_subpath;
     struct timeval start, end;
 
-    if(argv[1] == "-t")
+    printf("testing\n");
+    printf("%s\n",argv[1]);
+    printf("%s\n",argv[2]);
+    
+    if(string(argv[1]) == "-t")
         twoSensors = true;
     else
         twoSensors = false;
 
-    if(argv[2] == "-d")
+    if(string(argv[2]) == "-d")
         debug = true;
     else
         debug = false;
+
+    printf("%i\n",twoSensors);
+    printf("%i\n",debug);
+
     record_log("CREATING MAIN IMAGES AND VIDEOS DIRECTORY.");
 
     string img_path = "/home/ubuntu/AngryBirds/SDCard/images";
@@ -437,21 +445,23 @@ void* ADXL_sig(void* param)
     adxl.getAcceleration(&last_x, &last_y, &last_z);
     usleep(ADXL_DELAY_US);
 
-if(twoSensors == true){
+
     ADXL345 adxl2(ADXL345_ALTERNATE_ADDRESS);
-    adxl2.initialize();
-    if(adxl2.getLinkEnabled())
-        record_log("ADXL2 initialized.");
-    adxl2.setRate(0x0A);
     int16_t last2_x, x2;
     int16_t last2_y, y2;
     int16_t last2_z, z2;
-    queue <int16_t> sig2_x, sig2_y, sig2_z;
+     queue <int16_t> sig2_x, sig2_y, sig2_z;
     bool save2 = false;
     int sig2_limit = SIG_PRETIME;  
     ofstream sig2_log;
     const char* file2_name;
     string file2_path;
+    
+if(twoSensors == true){
+    adxl2.initialize();
+    if(adxl2.getLinkEnabled())
+        record_log("ADXL2 initialized.");
+    adxl2.setRate(0x0A);
     usleep(ADXL_DELAY_US);
     adxl2.getAcceleration(&last2_x, &last2_y, &last2_z);
     usleep(ADXL_DELAY_US);
