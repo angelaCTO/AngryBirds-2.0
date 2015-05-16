@@ -43,7 +43,7 @@ using namespace cacaosd_adxl345;
 #define LED_DETECT	        100000
 
 #define ADXL_DELAY_US       25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
-#define ADXL_THRESH         15
+// #define ADXL_THRESH         15
 
 /*-----------------------------------------------------
               FUNCTION PROTPOTYPES
@@ -97,10 +97,13 @@ int main(int argc, char* argv[])
     const char* converted_subpath;
     struct timeval start, end;
 
-    printf("testing\n");
-    printf("%s\n",argv[1]);
-    printf("%s\n",argv[2]);
-    
+    if(argc < 2){
+        printf("Please enter -t as first arguement to activate 2 sensors, -
+            d for debug. If not, simply pass any command line arguement");
+        exit(0);
+    }
+
+    else{
     if(string(argv[1]) == "-t")
         twoSensors = true;
     else
@@ -270,6 +273,7 @@ int main(int argc, char* argv[])
     input_cap.release();
     record_log("Exit successful.");
     usleep(500000);
+}
 } // End Main
 
 
@@ -423,6 +427,7 @@ void *listenForExit(void* param)
 void* ADXL_sig(void* param)
 {   
 
+    int threshTime = 30;
 
     //setup ADXL
     BBB_I2C i2c;
@@ -467,6 +472,51 @@ if(twoSensors == true){
     usleep(ADXL_DELAY_US);
 }
 
+
+    int threshx[3000];
+    int threshy[3000];
+    int threshz[3000];
+
+    int index = 0;
+
+    time_t timer;
+
+    time(&timer);
+    
+
+    printf("collecting data and setting threshold....");
+    
+    while(timer < timer + threshTime){
+        adxl.getAcceleration(&x,&y,&z);
+        threshx[index] = x;
+        threshy[index] = y;
+        threshz[index] = z;
+        index++;
+    }
+
+    int sumx = 0;
+    int sumy = 0;
+    int sumz = 0;
+
+
+    int average x;
+    int average y;
+    int average z;
+
+    for(int i  = 0; i  < 3000; i++){
+        sumx = sumx += threshx[index];
+        sumy = sumy += threshy[index];
+        sumz = sumz += threshz[index];
+    }
+
+    averagex = sumx / 3000;
+    averagey = sumy / 3000;
+    averagez = sumz / 3000;
+
+    int ADXL_THRESH = (averagex + averagey + averagez)/3;
+
+
+    printf("current threshold set to: %i", ADXL_THRESH);
 
 
 
