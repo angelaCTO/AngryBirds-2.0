@@ -98,8 +98,7 @@ int main(int argc, char* argv[])
     struct timeval start, end;
 
     if(argc < 2){
-        printf("Please enter -t as first arguement to activate 2 sensors, -
-            d for debug. If not, simply pass any command line arguement");
+        printf("Please enter -t as first arguement to activate 2 sensors, -d for debug. If not, simply pass any command line arguement");
         exit(0);
     }
 
@@ -428,7 +427,6 @@ void* ADXL_sig(void* param)
 {   
 
     int threshTime = 30;
-
     //setup ADXL
     BBB_I2C i2c;
 	ADXL345 adxl(i2c);
@@ -461,6 +459,7 @@ void* ADXL_sig(void* param)
     ofstream sig2_log;
     const char* file2_name;
     string file2_path;
+
     
 if(twoSensors == true){
     adxl2.initialize();
@@ -473,25 +472,18 @@ if(twoSensors == true){
 }
 
 
-    int threshx[3000];
-    int threshy[3000];
-    int threshz[3000];
+    int threshx[30];
+    int threshy[30];
+    int threshz[30];
 
-    int index = 0;
 
-    time_t timer;
+    printf("collecting data and setting threshold....\n");
 
-    time(&timer);
-    
-
-    printf("collecting data and setting threshold....");
-    
-    while(timer < timer + threshTime){
+    for(int i = 0; i < 30; i++){
         adxl.getAcceleration(&x,&y,&z);
-        threshx[index] = x;
-        threshy[index] = y;
-        threshz[index] = z;
-        index++;
+        threshx[i] = x;
+        threshy[i] = y;
+        threshz[i] = z;
     }
 
     int sumx = 0;
@@ -499,24 +491,24 @@ if(twoSensors == true){
     int sumz = 0;
 
 
-    int average x;
-    int average y;
-    int average z;
+    int averagex = 0;
+    int averagey = 0;
+    int averagez = 0;
 
-    for(int i  = 0; i  < 3000; i++){
-        sumx = sumx += threshx[index];
-        sumy = sumy += threshy[index];
-        sumz = sumz += threshz[index];
+    for(int i  = 0; i  < 30; i++){
+        sumx = sumx += threshx[i];
+        sumy = sumy += threshy[i];
+        sumz = sumz += threshz[i];
     }
 
-    averagex = sumx / 3000;
-    averagey = sumy / 3000;
-    averagez = sumz / 3000;
+    averagex = sumx / 30;
+    averagey = sumy / 30;
+    averagez = sumz / 30;
 
     int ADXL_THRESH = (averagex + averagey + averagez)/3;
 
 
-    printf("current threshold set to: %i", ADXL_THRESH);
+    printf("current threshold set to: %i\n", ADXL_THRESH);
 
 
 
