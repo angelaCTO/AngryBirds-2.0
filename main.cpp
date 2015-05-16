@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <algorithm>
 #include <queue>
 #include <deque>
 #include <vector>
@@ -13,6 +14,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "serial/serialib.h"
 #include "BlackLib/BlackLib.h"
 #include "Server/ServerSocket.h"
@@ -476,37 +478,68 @@ if(twoSensors == true){
     int threshy[30];
     int threshz[30];
 
+    for(int i = 0; i < 30; i++){
+        threshx[i] = 0;
+        threshy[i] = 0;
+        threshz[i] = 0;
+    }
+
+
+
+
+    adxl.getAcceleration(&x,&y,&z);
+        lastx = x;
+        lasty = y;
+        lastz = z;
+
+    int absx;
+    int absy;
+    int absz;
 
     printf("collecting data and setting threshold....\n");
 
     for(int i = 0; i < 30; i++){
         adxl.getAcceleration(&x,&y,&z);
-        threshx[i] = x;
-        threshy[i] = y;
-        threshz[i] = z;
+        absx = abs(lastx - x);
+        absy = abs(lasty - y);
+        absz = abs(lastz - z);
+        threshx[absx]++;
+        threshy[absy]++;
+        threshz[absz]++;   
     }
 
-    int sumx = 0;
-    int sumy = 0;
-    int sumz = 0;
-
-
-    int averagex = 0;
-    int averagey = 0;
-    int averagez = 0;
-
-    for(int i  = 0; i  < 30; i++){
-        sumx = sumx += threshx[i];
-        sumy = sumy += threshy[i];
-        sumz = sumz += threshz[i];
+    for(int i = 0; i < 30; i++){
+        if(threshx[i] == 0){
+            if(threshx[i+1] == 0){
+                int thresholdx = i;
+                break;
+            }
+        }
     }
 
-    averagex = sumx / 30;
-    averagey = sumy / 30;
-    averagez = sumz / 30;
+    for(int i = 0; i < 30; i++){
+        if(threshy[i] == 0){
+            if(threshy[i+1] == 0){
+                int thresholdy = i;
+                break;
+            }
+        }
+    }
 
-    int ADXL_THRESH = (averagex + averagey + averagez)/3;
+    for(int i = 0; i < 30; i++){
+        if(threshz[i] == 0){
+            if(threshz[i+1] == 0){
+                int thresholdz = i;
+                break;
+            }
+        }
+    }
 
+    int smallestThresh[3] = {thresholdx,thresholdy,thresholdz};
+
+    sort(smallestThresh,smallestThresh + 3);
+
+    ADXL_THRESH = smallestThresh[0];
 
     printf("current threshold set to: %i\n", ADXL_THRESH);
 
