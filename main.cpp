@@ -505,7 +505,10 @@ if(twoSensors == true){
         absz = abs(lastz - z);
         threshx[absx]++;
         threshy[absy]++;
-        threshz[absz]++;   
+        threshz[absz]++; 
+        lastx = x;
+        lasty = y;
+        lastz = z;  
     }
 
     for(int i = 0; i < 30; i++){
