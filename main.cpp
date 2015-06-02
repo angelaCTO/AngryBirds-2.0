@@ -45,7 +45,7 @@ using namespace cacaosd_adxl345;
 #define LED_DETECT	        100000
 
 #define ADXL_DELAY_US       25000 // if you want to change this, change SIG_PRETIME and SIG_POSTTIME too
-// #define ADXL_THRESH         15
+// #define ADXL_THRESH         
 
 /*-----------------------------------------------------
               FUNCTION PROTPOTYPES
@@ -427,7 +427,7 @@ void *listenForExit(void* param)
 
 void* ADXL_sig(void* param)
 {   
-
+    int16_t ADXL_THRESH;
     int threshTime = 30;
     //setup ADXL
     BBB_I2C i2c;
@@ -473,10 +473,12 @@ if(twoSensors == true){
     usleep(ADXL_DELAY_US);
 }
 
+    printf("testing\n");
 
-    int threshx[30];
-    int threshy[30];
-    int threshz[30];
+
+    int16_t threshx[30];
+    int16_t threshy[30];
+    int16_t threshz[30];
 
     for(int i = 0; i < 30; i++){
         threshx[i] = 0;
@@ -485,36 +487,47 @@ if(twoSensors == true){
     }
 
 
+    int16_t thresh_test_x;
+    int16_t thresh_test_y;
+    int16_t thresh_test_z;
+
+    int16_t thresh_test_last_x;
+    int16_t thresh_test_last_y;
+    int16_t thresh_test_last_z;
 
 
-    adxl.getAcceleration(&x,&y,&z);
-        lastx = x;
-        lasty = y;
-        lastz = z;
+    adxl.getAcceleration(&thresh_test_x,&thresh_test_y,&thresh_test_z);
+        thresh_test_last_x = thresh_test_x;
+        thresh_test_last_y = thresh_test_y;
+        thresh_test_last_z = thresh_test_z;
 
-    int absx;
-    int absy;
-    int absz;
+    int16_t absx;
+    int16_t absy;
+    int16_t absz;
+
+    int16_t thresholdx;
+    int16_t thresholdy;
+    int16_t thresholdz;
 
     printf("collecting data and setting threshold....\n");
 
     for(int i = 0; i < 30; i++){
-        adxl.getAcceleration(&x,&y,&z);
-        absx = abs(lastx - x);
-        absy = abs(lasty - y);
-        absz = abs(lastz - z);
+        adxl.getAcceleration(&thresh_test_x,&thresh_test_y,&thresh_test_z);
+        absx = abs(thresh_test_last_x - thresh_test_x);
+        absy = abs(thresh_test_last_y - thresh_test_y);
+        absz = abs(thresh_test_last_z - thresh_test_z);
         threshx[absx]++;
         threshy[absy]++;
         threshz[absz]++; 
-        lastx = x;
-        lasty = y;
-        lastz = z;  
+        thresh_test_last_x = thresh_test_x;
+        thresh_test_last_y = thresh_test_y;
+        thresh_test_last_z = thresh_test_z;  
     }
 
     for(int i = 0; i < 30; i++){
         if(threshx[i] == 0){
             if(threshx[i+1] == 0){
-                int thresholdx = i;
+                thresholdx = i;
                 break;
             }
         }
@@ -523,7 +536,7 @@ if(twoSensors == true){
     for(int i = 0; i < 30; i++){
         if(threshy[i] == 0){
             if(threshy[i+1] == 0){
-                int thresholdy = i;
+                thresholdy = i;
                 break;
             }
         }
@@ -532,17 +545,17 @@ if(twoSensors == true){
     for(int i = 0; i < 30; i++){
         if(threshz[i] == 0){
             if(threshz[i+1] == 0){
-                int thresholdz = i;
+                thresholdz = i;
                 break;
             }
         }
     }
 
-    int smallestThresh[3] = {thresholdx,thresholdy,thresholdz};
+    int16_t smallestThresh[3] = {thresholdx,thresholdy,thresholdz};
 
     sort(smallestThresh,smallestThresh + 3);
 
-    ADXL_THRESH = smallestThresh[0];
+    ADXL_THRESH = smallestThresh[2];
 
     printf("current threshold set to: %i\n", ADXL_THRESH);
 
@@ -618,7 +631,7 @@ if(twoSensors == true){
             sig2_limit = SIG_POSTTIME;
             if(debug == true){
                 printf("activity in ADXL2!!\n");
-                printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
+                printf("dx = %d, dy = %d, dz = %d\n", x2-last2_x, y2-last2_y, z2-last2_z);
             }
         }
 
