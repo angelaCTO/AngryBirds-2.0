@@ -626,7 +626,7 @@ if(twoSensors == true){
         adxl2.getAcceleration(&x2, &y2, &z2);
         // printf("x2 = %d, y2 = %d, z3 = %d\n", x2, y2, z2);
 
-        if( ((last2_x > x2+ADXL_THRESH) | (last2_y > y2+ADXL_THRESH) | (last2_z > z2+ADXL_THRESH) | (last2_x < x2-ADXL_THRESH) | (last2_y < y2-ADXL_THRESH) | (last2_z < z2-ADXL_THRESH)) & !isActivity )
+        if( ((last2_x > x2+ADXL_THRESH) | (last2_y > y2+ADXL_THRESH) | (last2_z > z2+ADXL_THRESH) | (last2_x < x2-ADXL_THRESH) | (last2_y < y2-ADXL_THRESH) | (last2_z < z2-ADXL_THRESH)) & !isActivity2 )
         {
             isActivity2 = true;
             save2 = true;
