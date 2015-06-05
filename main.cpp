@@ -476,6 +476,8 @@ if(twoSensors == true){
     printf("testing\n");
 
 
+    time_t end = time(NULL) + 30;
+
     int16_t threshx[30];
     int16_t threshy[30];
     int16_t threshz[30];
@@ -511,7 +513,7 @@ if(twoSensors == true){
 
     printf("collecting data and setting threshold....\n");
 
-    for(int i = 0; i < 30; i++){
+    while (time(NULL) <= end){
         adxl.getAcceleration(&thresh_test_x,&thresh_test_y,&thresh_test_z);
         absx = abs(thresh_test_last_x - thresh_test_x);
         absy = abs(thresh_test_last_y - thresh_test_y);
