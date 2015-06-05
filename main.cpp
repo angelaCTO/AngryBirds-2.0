@@ -569,8 +569,8 @@ if(twoSensors == true){
             isActivity = true;
             save = true;
             sig_limit = SIG_POSTTIME;
-            if(debug == true){
-                printf("activity in ADXL1!!\n");
+            printf("activity in ADXL1!!\n");
+            if(debug == true){   
                 printf("dx = %d, dy = %d, dz = %d\n", x-last_x, y-last_y, z-last_z);
             }
         }
@@ -629,8 +629,8 @@ if(twoSensors == true){
             isActivity2 = true;
             save2 = true;
             sig2_limit = SIG_POSTTIME;
+            printf("activity in ADXL2!!\n");
             if(debug == true){
-                printf("activity in ADXL2!!\n");
                 printf("dx = %d, dy = %d, dz = %d\n", x2-last2_x, y2-last2_y, z2-last2_z);
             }
         }
